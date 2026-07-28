@@ -27,11 +27,11 @@ const accountSchema = z.object({
   name: z.string().min(1, "Name is required"),
   bankName: z.string().optional(),
   type: z.enum(['SAVINGS', 'CURRENT', 'WALLET', 'CREDIT_CARD']),
-  openingBalance: z.coerce.number().default(0),
+  openingBalance: z.number().default(0),
   color: z.string().optional(),
   
   // Credit card specific fields
-  creditLimit: z.coerce.number().optional(),
+  creditLimit: z.number().optional(),
   network: z.string().optional(),
 })
 
