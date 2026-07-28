@@ -1,0 +1,207 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id          String   @id @default(cuid())
+  clerkUserId String   @unique
+  email       String   @unique
+  firstName   String?
+  lastName    String?
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  accounts     Account[]
+  categories   Category[]
+  transactions Transaction[]
+  budgets      Budget[]
+  recurring    RecurringPayment[]
+}
+
+enum AccountType {
+  SAVINGS
+  CURRENT
+  WALLET
+  CREDIT_CARD
+}
+
+enum AccountStatus {
+  ACTIVE
+  INACTIVE
+  CLOSED
+}
+
+model Account {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name     String
+  bankName String?
+  type     AccountType
+  status   AccountStatus @default(ACTIVE)
+
+  // Balances
+  openingBalance Float @default(0)
+  currentBalance Float @default(0)
+
+  // UI
+  color String? // Hex code
+  icon  String? // Lucide icon name
+
+  // Credit Card Specific fields
+  network       String? // Visa, Mastercard, RuPay
+  creditLimit   Float?
+  statementDate Int? // Day of month 1-31
+  dueDate       Int? // Day of month 1-31
+  interestRate  Float?
+  rewardType    String? // Cashback, Points, Miles
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions Transaction[] @relation("AccountTransactions")
+  transfersTo  Transaction[] @relation("TransferDestination")
+}
+
+enum TransactionType {
+  EXPENSE
+  INCOME
+  TRANSFER
+  REFUND
+}
+
+enum PaymentMethod {
+  CASH
+  UPI
+  CREDIT_CARD
+  DEBIT_CARD
+  NET_BANKING
+  WALLET
+  EMI
+}
+
+model Category {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name  String
+  type  TransactionType // Mostly EXPENSE or INCOME
+  icon  String?
+  color String?
+
+  subcategories Subcategory[]
+  transactions  Transaction[]
+  budgets       Budget[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, name, type])
+}
+
+model Subcategory {
+  id         String   @id @default(cuid())
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  name String
+
+  transactions Transaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([categoryId, name])
+}
+
+model Transaction {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  date   DateTime
+  amount Float
+  type   TransactionType
+
+  // Relations
+  accountId String
+  account   Account @relation("AccountTransactions", fields: [accountId], references: [id], onDelete: Restrict)
+
+  toAccountId String? // Used only if type is TRANSFER
+  toAccount   Account? @relation("TransferDestination", fields: [toAccountId], references: [id], onDelete: Restrict)
+
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  subcategoryId String?
+  subcategory   Subcategory? @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
+
+  // Details
+  merchant      String?
+  paymentMethod PaymentMethod?
+  description   String?
+  notes         String?
+  tags          String[]
+  receiptUrl    String?
+
+  isRecurring Boolean           @default(false)
+  recurringId String?
+  recurring   RecurringPayment? @relation(fields: [recurringId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum RecurringInterval {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+model RecurringPayment {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name        String
+  amount      Float
+  type        TransactionType
+  interval    RecurringInterval
+  nextDueDate DateTime
+  isActive    Boolean           @default(true)
+
+  transactions Transaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Budget {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  categoryId String? // If null, it's an overall budget
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  amount Float
+  month  Int // 1-12
+  year   Int // e.g. 2026
+
+  alertsEnabled  Boolean @default(true)
+  alertThreshold Float   @default(80) // Alert at 80%
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, categoryId, month, year])
+}
