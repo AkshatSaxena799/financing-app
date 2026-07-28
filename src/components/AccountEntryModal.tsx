@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -27,13 +26,13 @@ const accountSchema = z.object({
   name: z.string().min(1, "Name is required"),
   bankName: z.string().optional(),
   type: z.enum(['SAVINGS', 'CURRENT', 'WALLET', 'CREDIT_CARD']),
-  openingBalance: z.number().default(0),
+  openingBalance: z.number(),
   color: z.string().optional(),
-  
-  // Credit card specific fields
   creditLimit: z.number().optional(),
   network: z.string().optional(),
 })
+
+type AccountFormValues = z.infer<typeof accountSchema>
 
 interface AccountEntryModalProps {
   open: boolean
@@ -44,7 +43,7 @@ interface AccountEntryModalProps {
 export function AccountEntryModal({ open, onOpenChange, defaultType }: AccountEntryModalProps) {
   const addAccount = useAddAccount()
 
-  const form = useForm<z.infer<typeof accountSchema>>({
+  const form = useForm<AccountFormValues>({
     resolver: zodResolver(accountSchema),
     defaultValues: {
       name: "",
@@ -59,7 +58,7 @@ export function AccountEntryModal({ open, onOpenChange, defaultType }: AccountEn
 
   const watchType = form.watch("type")
 
-  const onSubmit = async (values: z.infer<typeof accountSchema>) => {
+  const onSubmit = async (values: AccountFormValues) => {
     try {
       await addAccount.mutateAsync({
         ...values,
@@ -141,7 +140,12 @@ export function AccountEntryModal({ open, onOpenChange, defaultType }: AccountEn
                 <FormItem>
                   <FormLabel>{watchType === 'CREDIT_CARD' ? "Current Outstanding (₹)" : "Current Balance (₹)"}</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" {...field} />
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={field.value}
+                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -157,7 +161,12 @@ export function AccountEntryModal({ open, onOpenChange, defaultType }: AccountEn
                     <FormItem>
                       <FormLabel>Credit Limit (₹)</FormLabel>
                       <FormControl>
-                        <Input type="number" step="0.01" {...field} value={field.value || ''} />
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={field.value ?? ''}
+                          onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

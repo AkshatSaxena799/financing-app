@@ -77,7 +77,8 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return new NextResponse(JSON.stringify(error.flatten()), { status: 400 })
-    }console.error("[TRANSACTIONS_POST]", error)
+    }
+    console.error("[TRANSACTIONS_POST]", error)
     return new NextResponse(error instanceof Error ? error.message : "Internal Error", { status: 500 })
   }
 }
