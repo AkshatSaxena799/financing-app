@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(account)
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return new NextResponse(JSON.stringify(error.errors), { status: 400 })
+      return new NextResponse(JSON.stringify(error.flatten()), { status: 400 })
     }
     console.error("[ACCOUNTS_POST]", error)
     return new NextResponse("Internal Error", { status: 500 })
